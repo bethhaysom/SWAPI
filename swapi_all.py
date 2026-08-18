@@ -21,7 +21,7 @@ for endpoint in endpoints:
     df = pd.DataFrame(data)
     
     # Create dynamic primary key (e.g., film_id, person_id, vehicle_id)
-    pk_name = "person_id" if endpoint == "people" else f"{endpoint[:-1]}_id"
+    pk_name = "person_id" if endpoint == "people" else ("species_id" if endpoint == "species" else f"{endpoint[:-1]}_id")
     df[pk_name] = df["url"].apply(extract_id)
     
     tables[endpoint] = df
@@ -41,8 +41,7 @@ junction_config = [
     ("starships", "starship_id", "films", "film_id", "starships_films", "junction_sta_fil.csv"),
     ("starships", "starship_id", "pilots", "person_id", "starships_people", "junction_sta_peo.csv"),
     ("planets", "planet_id", "films", "film_id", "planets_films", "junction_pla_fil.csv"),
-    ("people", "person_id", "species", "specie_id", "people_species", "junction_peo_spe.csv"),
-    ("species", "specie_id", "films", "film_id", "species_films", "junction_spe_fil.csv")
+    ("species", "species_id", "films", "film_id", "species_films", "junction_spe_fil.csv")
 ]
 
 for source_key, source_pk, list_col, target_pk, j_key, csv_filename in junction_config:
@@ -65,6 +64,17 @@ for source_key, source_pk, list_col, target_pk, j_key, csv_filename in junction_
 
 
 # Clean columns and export to CSV for each table
+
+tables["people"]['homeworld_id'] = tables["people"]['homeworld'].apply(extract_id)
+tables["species"]['homeworld_id'] = tables["species"]['homeworld'].apply(extract_id)
+
+# Selects first species url from the list before applying extract_id
+tables["people"]['species_id'] = (
+    tables["people"]['species']
+    .apply(lambda x: x[0] if isinstance(x, list) and len(x) > 0 else None)
+    .apply(extract_id)
+)
+
 table_columns = {
     "films": ['film_id', 'title', 'episode_id', 'director', 'release_date'],
     "vehicles": [
@@ -75,7 +85,7 @@ table_columns = {
     "people": [
         'person_id', 'name', 'height', 'mass', 
         'hair_color', 'skin_color', 'eye_color', 'birth_year', 
-        'gender', 'homeworld'
+        'gender', 'homeworld_id', 'species_id'
     ],
     "starships": [
         'starship_id', 'name', 'model', 'manufacturer',
@@ -89,9 +99,9 @@ table_columns = {
         'population'
     ],
     "species": [
-        'specie_id', 'name', 'classification', 'designation',
+        'species_id', 'name', 'classification', 'designation',
         'average_height', 'skin_colors', 'hair_colors', 
-        'average_lifespan', 'homeworld', 'language'
+        'average_lifespan', 'homeworld_id', 'language'
     ]
 }
 
